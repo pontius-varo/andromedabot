@@ -4,7 +4,7 @@ import responses
 
 # Main Token 
 # This Token shouldn't live here. Please move this into a .env file
-TOKEN = 'MTA1NzQ5ODI5ODQ2MzgyNjA5MQ.GFMkaf.rR0vNdKMvK-RPVcFmm8FfEyPrBYc2Qr7Onmt2U'
+TOKEN = ''
 
 async def send_message(msg, user_msg, is_private):
 
