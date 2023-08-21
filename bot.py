@@ -38,14 +38,48 @@ async def send_to_channel(channel_num, message, bot):
     ch = bot.get_channel(channel_num)
     await ch.send(message)
 
+async def send_embeded_to_channel(channel_num, item, bot):
+    
+    product_link = f'[View Product]({item["LINK"]})'
+    profit_and_roi = f'${item["PROFIT"]} | {item["ROI"]}'
+    cost = f'${item["COST"]}'
+    sale_price = f'${item["SALEPRICE"]}'
+
+    embed = discord.Embed(
+        colour=discord.Colour.dark_magenta(),
+        description=item["AMZLINK"],
+        title=item["NAME"]
+    )
+
+    embed.set_thumbnail(url=item["IMAGE"])
+    # Shouldn't be repeating yourself....
+    embed.add_field(name="Buy Here:", value=product_link, inline=False)
+    embed.add_field(name="ASIN:", value=item["ASIN"], inline=False)
+    embed.add_field(name="Cost:", value=cost, inline=False)
+    embed.add_field(name="Sale Price:", value=sale_price, inline=False)
+    embed.add_field(name="Profit | ROI:", value=profit_and_roi, inline=False)
+
+    ch = bot.get_channel(channel_num)
+    await ch.send(embed=embed)
+
+
+
 ## Spreadsheet stuff
 def format_item(item):
 
     # Note: This is too trusting. Need to come up with a better way to get specific items 
     # from item array....
+
+    image_link_raw = item[2].split('"')
+    image_link = ""
+
+    for fragment in image_link_raw:
+        if(len(fragment) > 10):
+            image_link = fragment
+
     formated_item = {
         "DATE" : date.today(),
-        "IMAGE" : item[2],
+        "IMAGE" : image_link,
         "NAME" : item[3],
         "ASIN" : item[4],
         "AMZLINK" : item[5],
@@ -96,10 +130,8 @@ async def send_spreadsheet_data(bot):
     # Once you have your values, send messages based on count...
     count = 0
 
-    for formattedItem in formatted_values:
-
-        message = write_message(formattedItem)
-        
+    for formatted_item in formatted_values:
+       
         channel_number = channel1
 
         if(count == 1):
@@ -107,7 +139,8 @@ async def send_spreadsheet_data(bot):
         elif(count > 1):
             channel_number = channel3
 
-        await send_to_channel(channel_number, message, bot)
+        await send_embeded_to_channel(channel_number, formatted_item, bot)
+
 
         count += 1
     
