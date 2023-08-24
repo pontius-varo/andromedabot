@@ -1,9 +1,9 @@
 import os 
 import discord
 import responses
-from datetime import date
+from datetime import datetime
 from dotenv import load_dotenv
-from discord.ext import commands
+from discord.ext import commands, tasks
 # Custom 
 import ss 
 
@@ -17,6 +17,8 @@ sheet_name = os.environ.get('SHEET')
 channel1 = int(os.environ.get('CHANNEL1'))
 channel2 = int(os.environ.get('CHANNEL2'))
 channel3 = int(os.environ.get('CHANNEL3'))
+column_start = os.environ.get('COLUMNSTART')
+column_end = os.environ.get('COLUMNEND')
 
 # Auxiliaries
 
@@ -40,24 +42,39 @@ async def send_to_channel(channel_num, message, bot):
 
 async def send_embeded_to_channel(channel_num, item, bot):
     
-    product_link = f'[View Product]({item["LINK"]})'
-    profit_and_roi = f'${item["PROFIT"]} | {item["ROI"]}'
-    cost = f'${item["COST"]}'
-    sale_price = f'${item["SALEPRICE"]}'
+    # item = { "IMAGEURL" : "URL.com", "AMAZONURL" : "URL.com", "PRODUCTNAME" : "NAME"...}
 
+    # item keys 
+    item_keys = item.keys()
+
+    # Base embed
     embed = discord.Embed(
         colour=discord.Colour.dark_magenta(),
         description=item["AMZLINK"],
-        title=item["NAME"]
+        title=item["TITLE"]
     )
 
-    embed.set_thumbnail(url=item["IMAGE"])
-    # Shouldn't be repeating yourself....
-    embed.add_field(name="Buy Here:", value=product_link, inline=False)
-    embed.add_field(name="ASIN:", value=item["ASIN"], inline=False)
-    embed.add_field(name="Cost:", value=cost, inline=False)
-    embed.add_field(name="Sale Price:", value=sale_price, inline=False)
-    embed.add_field(name="Profit | ROI:", value=profit_and_roi, inline=False)
+    # THINK ABOUT THIS!!!! MUST BE FIXED..... VVVVV
+
+    for key in item_keys:
+        if(key.find("IMAGE")):
+            embed.set_thumbnail(url=item["IMAGE"])
+        elif(key.find("SOURCEURL")):
+            embed.add_field(name="Buy Here:", value=item[key], inline=False)
+        # Should be last...
+        elif(key.find("KEEPA")):
+            embed.set_image(url=item[key])
+        elif(key.find("BACKEND") && item[key]):
+            footer_text = f'Note: {item[key]}'
+            embed.set_footer(text=footer_text)
+    # embed.set_thumbnail(url=item["IMAGE"])
+    # # Shouldn't be repeating yourself....
+    # embed.add_field(name="Buy Here:", value=product_link, inline=False)
+    # embed.add_field(name="ASIN:", value=item["ASIN"], inline=False)
+    # embed.add_field(name="Cost:", value=cost, inline=False)
+    # embed.add_field(name="Sale Price:", value=sale_price, inline=False)
+    # embed.add_field(name="Profit | ROI:", value=profit_and_roi, inline=False)
+
 
     ch = bot.get_channel(channel_num)
     await ch.send(embed=embed)
@@ -65,86 +82,97 @@ async def send_embeded_to_channel(channel_num, item, bot):
 
 
 ## Spreadsheet stuff
-def format_item(item):
+def format_item(item, columns):
 
-    # Note: This is too trusting. Need to come up with a better way to get specific items 
-    # from item array....
+    # Data examples:
+    # columns = { "0" : "IMAGEURL", "1" : "AMAZONURL", "PRODUCTNAME" : 2, ....}
+    # item = ["https://whatever.foobar", "amazonurl", "productname"]
 
-    image_link_raw = item[2].split('"')
-    image_link = ""
+    formatted_item = {}
 
-    for fragment in image_link_raw:
-        if(len(fragment) > 10):
-            image_link = fragment
+    count = 0
 
-    formated_item = {
-        "DATE" : date.today(),
-        "IMAGE" : image_link,
-        "NAME" : item[3],
-        "ASIN" : item[4],
-        "AMZLINK" : item[5],
-        "LINK": item[6],
-        "COST" : item[7],
-        "SALEPRICE": item[8],
-        "PROFIT" : item[9],
-        "ROI" : item[10]
-    }
+    for value in item:
+        current_column = columns[f'{count}']
+        formatted_item[current_column] = value 
+        
+        if(current_column.find("NAME")):
+            formatted_item["TITLE"] = value
+        elif(current_column.find("AMAZON")):
+            formatted_item["AMZLINK"] = value 
+        else: 
+            formatted_item[current_column] = value 
+
+        count += 1
+
 
     return formated_item
-         
-def format_sheet_data(sheet_data):
+
+def get_column_order(columns):
+    column_count = 0
+    column_order = {}
+
+    for val in columns:
+        column_order[f'{column_count}'] = val.replace(" ", "").uppercase()
+        column_count += 1
+
+    return column_order
+
+def format_sheet_data(sheet_data, columns):
     
-    result = None
+    result = []
 
     if(len(sheet_data) > 1):
-        
-        payload = map(format_item, sheet_data)
-        result = list(payload)
+
+        for item in sheet_data
+            formatted_item = format_item(item, columns)
+            payload.append(formatted_item)
+
     else:
         result = False
 
     return result 
 
-
-def write_message(item):
-    msg1 = f'[{item["NAME"]}]({item["AMZLINK"]})'
-    msg2 = f'\n**Buy Here:**\n[View Product]({item["LINK"]})'
-    msg3 = f'\n**ASIN:**\n{item["ASIN"]}'
-    msg4 = f'\n**Cost:**\n{item["COST"]}'
-    msg5 = f'\n**Sale Price:**\n{item["SALEPRICE"]}'
-    msg6 = f'\n**Profit|ROI:**\n{item["PROFIT"]}|${item["ROI"]}'
-
-    return msg1 + msg2 + msg3 + msg4 + msg5 + msg6
-
-
 ## Main Functions
 
 async def send_spreadsheet_data(bot):
 
-    # Get spreadsheet values
+    print('Attempting to send messages.....')
+    # Get spreadsheet
     spread_sheet_raw = ss.open_worksheet(key_path, worksheet_name, sheet_name)
+    # Get column values in first row of range (based on COLUMNSTART and COLUMNEND)
+    spread_sheet_columns = ss.get_worksheet_values(f'{column_start}1:{column_end}1', spread_sheet_raw)
+    # Organize actual columns into an order...
+    spread_sheet_true_columns = get_column_order(spread_sheet_columns)
+    
+    
+    
     # Get raw spreadsheet values | Note: val should be generated... not hard coded
-    spread_sheet_vals = ss.get_worksheet_values("A5:K7", spread_sheet_raw)
+    spread_sheet_vals = ss.get_worksheet_values(f'{column_start}x:{column_end}y', spread_sheet_raw)
     # Get formatted values
-    formatted_values = format_sheet_data(spread_sheet_vals)
+    formatted_values = format_sheet_data(spread_sheet_vals, spread_sheet_true_columns)
     # Once you have your values, send messages based on count...
     count = 0
 
-    for formatted_item in formatted_values:
-       
-        channel_number = channel1
+    if(formatted_values):
+        for formatted_item in formatted_values:
+        
+            channel_number = channel1
 
-        if(count == 1):
-            channel_number = channel2
-        elif(count > 1):
-            channel_number = channel3
+            if(count == 1):
+                channel_number = channel2
+            elif(count > 1):
+                channel_number = channel3
 
-        await send_embeded_to_channel(channel_number, formatted_item, bot)
+            await send_embeded_to_channel(channel_number, formatted_item, bot)
 
 
-        count += 1
+            count += 1
     
-    print("OK| Messages Sent!")
+        current_time = datetime.now()
+        print(f'OK\n Messages sent at: {current_time}')
+    else: 
+        raise Exception('Not enough data to send. Data was less than or equal to 1.....')
 
 
 def run_bot():
@@ -153,38 +181,32 @@ def run_bot():
     intents.message_content = True
     bot = commands.Bot(command_prefix='$', intents=intents)
 
+    # Every hour, invoke send spreadsheet data
+    @tasks.loop(hours=1)
+    async def try_to_send_messages():
+        try:
+            await send_spreadsheet_data(bot)
+        except Exception as e:
+            print(f'MESSAGE SENDING FAILED {e}')
+
+
     @bot.event
     async def on_ready():
         print(f'Andromeda is running...')
         print('------')
-        print('Attempting to send messages.....')
-        await send_spreadsheet_data(bot)
+        try_to_send_messages.start()
 
     @bot.command()
     async def greeting(ctx):
 
         print(ctx.author)
 
-        response = ''
-
-        if(ctx.author == 'minwoah#4946'):
-            response = 'Fuck you faggot'
-        else: 
-            response = 'Hey!'
-
+        response = 'Hey!'
         await ctx.send(response)
 
     @bot.command()
     async def hello(ctx):
         await ctx.send('I exist to serve the will of Pontius')
-
-
-    # ctx = context
-    # @bot.command()
-    # async def ping(ctx):
-    #     # It's an interger
-    #     channel = bot.get_channel(1141489875124752524)
-    #     await channel.send('Hello Channel!')
 
 
     bot.run(TOKEN)

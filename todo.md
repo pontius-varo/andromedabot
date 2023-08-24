@@ -1,3 +1,4 @@
 ## Todo list 
-* find scheduling for bot (run at x time)
-* create dynamic creation (get column headers and assemble item object using them...)
+* fix send_embeded_to_channel to dynamically create embedded message
+* add sqlite to archive where the bot is on the spreadsheet
+* add logic to prevent the bot from continuing after last row if blank....
