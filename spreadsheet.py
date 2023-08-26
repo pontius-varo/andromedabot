@@ -20,12 +20,13 @@ def open_worksheet(keyPath, worksheet_name, sheet_name):
 
 def get_worksheet_values(value_range_string, worksheet):
     
-    with_forumla_option = gspread.utils.ValueRenderOption.formula
+    #with_forumla_option = gspread.utils.ValueRenderOption.formula
 
     worksheet_values = []
 
     try:
-        worksheet_values = worksheet.get_values(value_range_string, value_render_option=with_forumla_option)
+        # , value_render_option=with_forumla_option
+        worksheet_values = worksheet.get_values(value_range_string)
     except:
         e = sys.exc_info()[0]
         raise Exception(e)
