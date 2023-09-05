@@ -12,12 +12,9 @@ def get_row_counts_query():
 
 def update_row_counts_query(row_start, row_end, time):
 
-    new_start = row_start + 3 
-    new_end = row_end + 3
-
-    print(new_start)
-    print(new_end)
-
+    new_start = row_start + 4 
+    new_end = row_end + 4
+    
     query = f'UPDATE spreadsheet_cursor SET row_start = {new_start}, row_end = {new_end}, modified = \'{time}\' WHERE id = 1;'
 
     return query 

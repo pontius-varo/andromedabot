@@ -20,6 +20,7 @@ sheet_name = os.environ.get('SHEET')
 channel1 = int(os.environ.get('CHANNEL1'))
 channel2 = int(os.environ.get('CHANNEL2'))
 channel3 = int(os.environ.get('CHANNEL3'))
+channel4 = int(os.environ.get('CHANNEL4'))
 column_start = os.environ.get('COLUMNSTART')
 column_end = os.environ.get('COLUMNEND')
 
@@ -44,7 +45,7 @@ def update_row_counts(connection, row_start, row_end, time):
     except Error as e:
         raise Exception('Failed to update row_counts!')
 
-    print(f'Updated the following rows...\nROW_START: {row_start} -> {row_start + 3}\nROW_END {row_end} -> {row_end + 3}')
+    print(f'Updated the following rows...\nROW_START: {row_start} -> {row_start + 4}\nROW_END {row_end} -> {row_end + 4}')
 
 # channel + embed related functions
 async def send_to_channel(channel_num, message, bot):
@@ -105,8 +106,10 @@ async def send_embedded_messages(items, bot):
 
         if(count == 1):
             channel_number = channel2
-        elif(count > 1):
+        elif(count == 2):
             channel_number = channel3
+        elif(count > 2):
+            channel_number = channel4
 
         await assemble_embeded(channel_number, item, bot)
         
@@ -141,7 +144,7 @@ async def send_spreadsheet_data(bot, sql_connection):
     
     # Once you have your values, send messages based on count...
 
-    if(formatted_values and len(formatted_values) >= 3):
+    if(formatted_values and len(formatted_values) >= 4):
 
         await send_embedded_messages(formatted_values, bot)
 
@@ -152,7 +155,7 @@ async def send_spreadsheet_data(bot, sql_connection):
                     
         print(f'OK\n Messages sent at: {current_time}\n------')
     else: 
-        print('Not enough messages to send...skipping for now until 3 entries are made...\n------')
+        print('Not enough messages to send...skipping for now until 4 entries are made...\n------')
 
 def run_bot():
 
