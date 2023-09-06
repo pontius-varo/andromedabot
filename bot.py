@@ -59,7 +59,7 @@ async def assemble_embeded(channel_num, item, bot):
 
     # Base embed
     embed = discord.Embed(
-        colour=discord.Colour.dark_magenta(),
+        # colour=discord.Colour.dark_magenta(),
         title=item["TITLE"],
         url=item["AMZLINK"]
     )
