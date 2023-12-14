@@ -3,6 +3,8 @@ import sys
 
 def open_worksheet(keyPath, worksheet_name, sheet_name):
 
+    print(f'keypath={keyPath} worksheetName={worksheet_name} {sheet_name}')
+
     opened_worksheet = []
 
     try:
@@ -12,7 +14,8 @@ def open_worksheet(keyPath, worksheet_name, sheet_name):
 
         opened_worksheet = raw_worksheet.worksheet(sheet_name)
 
-    except:
+    except Exception as e:
+        print(e)
         e = sys.exc_info()[0]
         raise Exception(e)
 
@@ -24,10 +27,12 @@ def get_worksheet_values(value_range_string, worksheet):
 
     worksheet_values = []
 
+    print("IN WORKSHEET VALS")
     try:
         # , value_render_option=with_forumla_option
         worksheet_values = worksheet.get_values(value_range_string)
-    except:
+        print("OK GOT VALUES")
+    except Exception as e:
         e = sys.exc_info()[0]
         raise Exception(e)
 

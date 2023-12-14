@@ -1,4 +1,5 @@
 import os 
+import sys
 import discord
 # Custom imports
 import spreadsheet 
@@ -18,11 +19,10 @@ key_path = os.environ.get('KEYPATH')
 worksheet_name = os.environ.get('WORKSHEET')
 sheet_name = os.environ.get('SHEET')
 channel1 = int(os.environ.get('CHANNEL1'))
-channel2 = int(os.environ.get('CHANNEL2'))
-channel3 = int(os.environ.get('CHANNEL3'))
-channel4 = int(os.environ.get('CHANNEL4'))
 column_start = os.environ.get('COLUMNSTART')
 column_end = os.environ.get('COLUMNEND')
+
+print(TOKEN)
 
 # database related functions
 def log_error(connection, error, current_time):
@@ -45,54 +45,98 @@ def update_row_counts(connection, row_start, row_end, time):
     except Error as e:
         raise Exception('Failed to update row_counts!')
 
-    print(f'Updated the following rows...\nROW_START: {row_start} -> {row_start + 4}\nROW_END {row_end} -> {row_end + 4}')
+    print(f'Updated the following rows...\nROW_START: {row_start} -> {row_start + 1}\nROW_END {row_end} -> {row_end + 1}')
 
 # channel + embed related functions
 async def send_to_channel(channel_num, message, bot):
     ch = bot.get_channel(channel_num)
     await ch.send(message)
 
+def create_approval_link(asin_str):
+    """Generates approval link using valid ASIN"""
+    return f'https://sellercentral.amazon.com/product-search/search?q={asin_str}'    
+
 async def assemble_embeded(channel_num, item, bot):
 
-    # item keys 
-    item_keys = item.keys()
 
-    # Base embed
-    embed = discord.Embed(
-        # colour=discord.Colour.dark_magenta(),
-        title=item["TITLE"],
-        url=item["AMZLINK"]
-    )
 
-    # This logic should be redone in the future. A long if statement isn't ideal!
-    for key in item_keys:
+    try:
+        # item keys 
+        item_keys = item.keys()
 
-        if(key != "TITLE" and key != "AMZLINK" and key != "ROI" and key != "NOTE" and key !="CATEGORY"):
-            if(key == "THUMBNAIL"):
-                embed.set_thumbnail(url=item["THUMBNAIL"])
-            elif(key == "SOURCEURL"):
-                product_link = f'[View Product]({item["SOURCEURL"]})'
-                embed.add_field(name="Buy Here:", value=product_link, inline=False)
-            elif("PROFIT" in key):
-                profit_and_roi = f'{item["PROFIT"]} | {item["ROI"]}'
-                embed.add_field(name="Profit | ROI", value=profit_and_roi, inline=False)
-            elif("CHECK" in key):
-                approval_check = f'[Check for Approval]({item[key]})'
-                embed.add_field(name="Check Restrictions:", value=approval_check, inline=False)
-            elif("SALESRANK" in key):
-                sales_rank = f'{item[key]} in {item["CATEGORY"]}'
-                embed.add_field(name="Sales Rank:", value=sales_rank, inline=False)
-            elif("KEEPA" in key):
-                embed.set_image(url=item[key])
-            elif(("BACKEND" in key) and item[key] and len(item[key]) > 1):
-                footer_text = f'Note: {item[key]}'
-                embed.set_footer(text=footer_text)
-            elif(item[key] and len(item[key]) > 1):
-                name = f'{key}:'
-                embed.add_field(name=name, value=item[key], inline=False)
+        # Base embed
+        embed = discord.Embed(
+            # colour=discord.Colour.dark_magenta(),
+            title=item["NAME"],
+            url=item["AMZURL"]
+        )
+
+        # This logic should be redone in the future. A long if statement isn't ideal!
+        # Needs to be redone to account for different columns
+
+        for key in item_keys:
+
+            if(key != "NAME" and key != "AMZURL" and key != "ROI" and key != "NOTE" and key !="CATEGORY"):
+                
+                if(key == "IMAGEURL"):
+                    embed.set_thumbnail(url=item["IMAGEURL"])
+                
+                elif(key == "SOURCEURL"):
+                    product_link = f'[View Product]({item["SOURCEURL"]})'
+                    embed.add_field(name="Buy Here:", value=product_link, inline=False)
+                
+                elif("PROFIT" in key):
+                    roi = float(item["ROI"]) * 100
+                    finalized_roi = f'{int(roi)}%'
+
+                    profit_and_roi = f'${item["PROFIT"]} | {finalized_roi}'
+                    embed.add_field(name="Profit | ROI", value=profit_and_roi, inline=False)
+
+                elif("ASIN" in key):
+                    approval_link = create_approval_link(item[key])
+
+                    approval_check = f'[Check for Approval]({approval_link})'
+                    embed.add_field(name="Check Restrictions:", value=approval_check, inline=False)
+
+                    asin = f'{item[key]}'
+                    embed.add_field(name="ASIN:", value=asin, inline=False)
+
+
+                elif("SALESRANK" in key):
+                    sales_rank = f'{item[key]} in {item["CATEGORY"]}'
+                    embed.add_field(name="Sales Rank:", value=sales_rank, inline=False)
+                
+                elif("BUYBOX" in key):
+                    buybox_str = f'${item["BUYBOX"]}'
+                    embed.add_field(name="BUYBOX:", value=buybox_str, inline=False)
+                
+                elif("PRICE" in key):
+                    price_str = f'${item["PRICE"]}'
+                    embed.add_field(name="PRICE:", value=price_str, inline=False)
+
+                elif("STOCK" in key):
+                    embed.add_field(name="STOCK:", value=item["STOCK"], inline=False)
+                
+                elif("MOQ" in key):
+                    embed.add_field(name="MOQ:", value=item["MOQ"], inline=False)
+                        
+                elif(item[key] and len(item[key]) > 1):
+                    name = f'{key}:'
+                    embed.add_field(name=name, value=item[key], inline=False)
+        
+
+        # Set Footer
+        footer_text = "To place an order please open a #ticket"
+        embed.set_footer(text=footer_text)
+
+        ch = bot.get_channel(channel_num)
+        await ch.send(embed=embed)
     
-    ch = bot.get_channel(channel_num)
-    await ch.send(embed=embed)
+    except Exception as e:
+        print("EXCEPTION HERE!")
+        print(e)
+        e = sys.exc_info()[0]
+        raise Exception(e)
 
 ## Main Functions
 
@@ -115,7 +159,76 @@ async def send_embedded_messages(items, bot):
         
         count += 1
 
+async def send_embedded_messages_once(items, bot):
+
+    print("HERE IN SENDING")
+    print(items)
+    try:
+
+        for item in items:
+
+            channel_num = channel1
+
+            await assemble_embeded(channel_num, item, bot)
+
+    except Exception as e:
+        print("EXCEPTION HERE")
+        print(e)
+        e = sys.exc_info()[0]
+        raise Exception(e)
+
+
+
+async def send_single_row_of_data(bot, sql_connection):
+    """Method that sends spreedsheet data ONCE to appropriate channel via user invocation"""
+
+    print('Attempting to send messages.....')
+
+    # Get row_counts from sql...
+    row_counts = get_row_counts(sql_connection)
+
+    row_start = row_counts[0]
+    row_end = row_counts[1]
+
+    # Get spreadsheet
+    spread_sheet_raw = spreadsheet.open_worksheet(key_path, worksheet_name, sheet_name)
+    
+    # Get column values in first row of range (based on COLUMNSTART and COLUMNEND)
+    column_base_range = f'{column_start}1:{column_end}1'
+    spread_sheet_columns = spreadsheet.get_worksheet_values(column_base_range, spread_sheet_raw)
+
+    print("first column vals")
+
+    # Organize actual columns into an order...
+    spread_sheet_true_columns = auxiliaries.get_column_order(spread_sheet_columns)
+    
+    # Get raw spreadsheet values 
+    target_range = f'{column_start}{row_start}:{column_end}{row_end}'
+    spread_sheet_vals = spreadsheet.get_worksheet_values(target_range, spread_sheet_raw)
+
+    print("GOT RAW VALUES")
+    
+    # Get formatted values
+    formatted_values = auxiliaries.format_sheet_data(spread_sheet_vals, spread_sheet_true_columns)
+    
+    print("OK got formatted values")
+    # Once you have your values, send messages
+
+    if(formatted_values and len(formatted_values) >= 1):
+        await send_embedded_messages_once(formatted_values, bot)
+
+        # if all is good, go ahead and send everything out...            
+        current_time = datetime.now()
+
+        update_row_counts(sql_connection, row_start, row_end, current_time)
+                    
+        print(f'OK\n Messages sent at: {current_time}\n------')
+    else:
+        print("NOT ENOUGH DATA TO SEND")
+
+
 async def send_spreadsheet_data(bot, sql_connection):
+    """Method that sends spreadsheet data to appropriate channels"""
 
     print('Attempting to send messages.....')
 
@@ -165,28 +278,38 @@ def run_bot():
 
     connection = datafunctions.create_connection('./db/database.db')
 
-    @tasks.loop(hours=1)
-    async def try_to_send_messages():
-        try:
-            await send_spreadsheet_data(bot, connection)
-        except Exception as error:
-            current_time = datetime.now()
-            print(f'MESSAGE SENDING FAILED at ({current_time})\nERROR: {error}\n------')
-            log_error(connection, error, current_time)
-
     @bot.event
     async def on_ready():
         print(f'Andromeda is running...\n------')
-        try_to_send_messages.start()
 
     @bot.command()
     async def greeting(ctx):
         response = 'Hey!'
         await ctx.send(response)
 
+    # Send Message. Only Admin can send message...
     @bot.command()
-    async def hello(ctx):
-        await ctx.send('I exist to serve the will of Pontius')
+    async def send(ctx):
+        """Send new sheet row to saved channels"""
+
+        # 329686819384066048 (zack), 195737156772298752 (me)
+
+        print(ctx.author.id)
+
+        if ctx.author.id == 329686819384066048 or ctx.author.id == 195737156772298752:
+            print("OK VALID")
+
+            try:
+                await send_single_row_of_data(bot, connection)
+                await ctx.send("Sent data to appropriate channels!")
+            except Exception as error:
+                current_time = datetime.now()
+                print(f'MESSAGE SENDING FAILED at ({current_time})\nERROR: {error}\n------')
+                log_error(connection, error, current_time)
+                await ctx.send("Oops something happened. Pester @Pontius for details.")
+        else:
+            print("NOT VALID USER")
+            await ctx.send("YOU ARE NOT A VALID ADMIN.")
 
     bot.run(TOKEN)
 

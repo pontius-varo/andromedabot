@@ -11,9 +11,11 @@ def get_row_counts_query():
     return query
 
 def update_row_counts_query(row_start, row_end, time):
+    """Augments the cursor count for SQLite..."""
 
-    new_start = row_start + 4 
-    new_end = row_end + 4
+    # Hardcoded to augment by 1 for Zack...maybe regulate to env to determine by how much will be augmented the count?
+    new_start = row_start + 1 
+    new_end = row_end + 1
     
     query = f'UPDATE spreadsheet_cursor SET row_start = {new_start}, row_end = {new_end}, modified = \'{time}\' WHERE id = 1;'
 
@@ -33,14 +35,7 @@ def format_item(item, columns):
     for value in item:
         current_column = columns[f'{count}']
 
-        if("NAME" in current_column):
-            formatted_item["TITLE"] = value
-        elif("AMAZONURL" in current_column):
-            formatted_item["AMZLINK"] = value 
-        elif("IMAGE" in current_column):
-            formatted_item["THUMBNAIL"] = value
-        else: 
-            formatted_item[current_column] = value 
+        formatted_item[current_column] = value 
 
         count += 1
 
@@ -60,7 +55,7 @@ def format_sheet_data(sheet_data, columns):
     
     result = []
 
-    if(len(sheet_data) > 1):
+    if(len(sheet_data) >= 1):
 
         for item in sheet_data:
             formatted_item = format_item(item, columns)
