@@ -1,6 +1,6 @@
 ## Todo list 
 [DONE]
-replaced bot token with: MTE4NDg2NDY1OTM4MDEwOTM2NA.GI8pT6.gfphw_f0sPKdKX5i7fX50vtCQTXvMtqwUjhoLI
+replaced bot token with: token
 replaced channel1 id with: 1176566814474506344
 kh-bot2@kh-bot-408115.iam.gserviceaccount.com
 
