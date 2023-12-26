@@ -19,10 +19,10 @@ key_path = os.environ.get('KEYPATH')
 worksheet_name = os.environ.get('WORKSHEET')
 sheet_name = os.environ.get('SHEET')
 channel1 = int(os.environ.get('CHANNEL1'))
+channel2 = int(os.environ.get('CHANNEL2'))
+channel3 = int(os.environ.get('CHANNEL3'))
 column_start = os.environ.get('COLUMNSTART')
 column_end = os.environ.get('COLUMNEND')
-
-print(TOKEN)
 
 # database related functions
 def log_error(connection, error, current_time):
@@ -57,8 +57,6 @@ def create_approval_link(asin_str):
     return f'https://sellercentral.amazon.com/product-search/search?q={asin_str}'    
 
 async def assemble_embeded(channel_num, item, bot):
-
-
 
     try:
         # item keys 
@@ -133,7 +131,6 @@ async def assemble_embeded(channel_num, item, bot):
         await ch.send(embed=embed)
     
     except Exception as e:
-        print("EXCEPTION HERE!")
         print(e)
         e = sys.exc_info()[0]
         raise Exception(e)
@@ -161,19 +158,16 @@ async def send_embedded_messages(items, bot):
 
 async def send_embedded_messages_once(items, bot):
 
-    print("HERE IN SENDING")
-    print(items)
     try:
 
         for item in items:
 
-            channel_num = channel1
-
-            await assemble_embeded(channel_num, item, bot)
+            # Send to two channels for now...change this logic!
+            await assemble_embeded(channel1, item, bot)
+            await assemble_embeded(channel2, item, bot)
+            await assemble_embeded(channel3, item, bot)
 
     except Exception as e:
-        print("EXCEPTION HERE")
-        print(e)
         e = sys.exc_info()[0]
         raise Exception(e)
 
